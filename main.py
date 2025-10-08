@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QLabel,
     QVBoxLayout,
+    QScrollArea,
     QFileDialog,
     QLineEdit,
     QHBoxLayout,
@@ -13,6 +14,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import os
 import configparser
+from functions import populate_thumbnails, FlowLayout
 
 # Config initialization
 config = configparser.ConfigParser()
@@ -35,7 +37,7 @@ class SimpleApp(QWidget):
 
         # Set up the window
         self.setWindowTitle('Cutieview')
-        self.setGeometry(400, 400, 360, 200)
+        self.setGeometry(400, 400, 480, 280)
 
         # Create a label to display path the wallpapers are loaded from
         self.label = QLabel(f'Current Path: {wallpaper_path}', self)
@@ -45,20 +47,42 @@ class SimpleApp(QWidget):
 
         # Create a button to open the settings window
         self.button = QPushButton('Settings', self)
-        
         self.button.clicked.connect(self.on_click)
 
-        # Set up the layout of the main window
-        # Place the label at the top, add a stretch, then put the button at the bottom center
+        # Thumbnail scroll area (initially empty)
+        self.thumb_scroll = QScrollArea(self)
+        self.thumb_scroll.setWidgetResizable(True)
+        self.thumb_container = QWidget()
+        # Use a FlowLayout so thumbnails line up and wrap to the next row
+        if FlowLayout is not None:
+            self.thumbs_layout = FlowLayout(self.thumb_container, spacing=6)
+        else:
+            from PyQt5.QtWidgets import QHBoxLayout
+
+            self.thumbs_layout = QHBoxLayout()
+            self.thumbs_layout.setSpacing(6)
+        self.thumb_container.setLayout(self.thumbs_layout)
+        self.thumb_scroll.setWidget(self.thumb_container)
+
+    # Set up the layout of the main window
+    # Place the label at the top, thumbnails below it (vertical scroll), then a stretch and the button at the bottom
         layout = QVBoxLayout()
         layout.addWidget(self.label)
+        layout.addWidget(self.thumb_scroll)
         layout.addStretch()
-        layout.addWidget(self.button, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
+        layout.addWidget(self.button, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
 
         self.setLayout(layout)
 
         # keep reference for child windows
         self.settings_window = None
+
+        # Populate initial thumbnails if a path exists
+        if wallpaper_path:
+            try:
+                populate_thumbnails(self.thumbs_layout, wallpaper_path)
+            except Exception:
+                pass
 
     def on_click(self):
         """Open (or focus) the settings window."""
@@ -73,6 +97,8 @@ class SimpleApp(QWidget):
 
         self.settings_window = SettingsWindow(parent=self)
         self.settings_window.show()
+
+    # thumbnails are populated using functions.populate_thumbnails
 
 
 class SettingsWindow(QWidget):
@@ -127,6 +153,11 @@ class SettingsWindow(QWidget):
         try:
             if self.parent is not None and hasattr(self.parent, 'label'):
                 self.parent.label.setText(f'Path: {directory}')
+                # refresh thumbnails in the main window using the helper
+                try:
+                    populate_thumbnails(self.parent.thumbs_layout, directory)
+                except Exception:
+                    pass
         except Exception:
             pass
 
