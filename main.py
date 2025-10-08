@@ -110,7 +110,7 @@ class SettingsWindow(QWidget):
         self.setWindowTitle('Settings — Cutieview')
         self.setGeometry(800, 200, 520, 120)
 
-        lbl = QLabel('Default path:', self)
+        lbl = QLabel('Current Path:', self)
         lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         # Line edit to show the currently selected path
