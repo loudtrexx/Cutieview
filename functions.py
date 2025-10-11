@@ -146,6 +146,56 @@ def populate_thumbnails(layout, dir_path: str, thumb_size=(96, 96), limit=24) ->
     return added
 
 
+def start_qtimer(interval_ms: int, callback, single_shot: bool = False, parent=None):
+    """Start a non-blocking QTimer that calls `callback` on the main (GUI) thread.
+
+    Returns the QTimer instance so the caller can keep a reference and stop it later.
+
+    - interval_ms: milliseconds between callbacks
+    - callback: callable with no arguments (or use functools.partial)
+    - single_shot: if True, the timer will fire once
+    - parent: optional QObject parent for the timer
+
+    Notes:
+    - This uses PyQt5.QtCore.QTimer under the hood and will raise RuntimeError if PyQt5
+      isn't available in the environment.
+    - The callback runs on the Qt event loop (main thread), so it won't block the UI
+      unless the callback itself is long-running. For long tasks, use a worker thread
+      or offload work to concurrent.futures.
+    """
+    try:
+        from PyQt5.QtCore import QTimer
+    except Exception as e:
+        raise RuntimeError('PyQt5 is required for start_qtimer') from e
+
+    timer = QTimer(parent)
+    timer.setInterval(int(interval_ms))
+    timer.setSingleShot(bool(single_shot))
+    timer.timeout.connect(callback)
+    timer.start()
+    print("DEBUG: Started!")
+    return timer
+
+
+def stop_qtimer(timer):
+    """Stop and delete a QTimer started with start_qtimer.
+
+    Safe to call with None or non-QTimer values (it will no-op).
+    """
+    if timer is None:
+        return
+    try:
+        timer.stop()
+        print("DEBUG: Stopped!")
+        try:
+            timer.deleteLater()
+        except Exception:
+            pass
+    except Exception:
+        # ignore any errors
+        pass
+
+
 # --- FlowLayout implementation (wraps items into rows) -----------------
 try:
     from PyQt5.QtCore import QPoint, QRect, QSize
